@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html manifest="http://app.noyesno.net/poker-chip/app.manifest">
+  <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <link rel="apple-touch-icon" sizes="114x114" href="http://app.noyesno.net/poker-chip/touch-icon.114x114.png" />
+  <title>Chip Counter</title>
+<link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/jquery-mobile/1.3.1/jquery.mobile.min.css"/>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script>
+
+var lang = {
+  en:{
+    name:'Chip Counter',
+    version: 'Version'
+  },
+  zh:{
+    name:'随身筹',
+    version: '版本'
+  }
+};
+
+var app = {
+  version: '0.189',
+  id:      'chip-counter',
+  _:0
+};
+
+var appenv = {
+  query: null,
+  _:0
+};
+
+var appdata = {
+  rounds: [],
+  player: [],
+  _:0
+};
+
+var appcache = {
+  balance: [],
+  _:0
+};
+
+var counter = {
+  downloading: 0,
+  _:0
+};
+
+$(document).bind("mobileinit", function(){
+  $.mobile.defaultPageTransition = 'flip';
+  //$.extend($.mobile , { defaultPageTransition: 'flip', });
+});
+</script>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/jquery-mobile/1.3.1/jquery.mobile.min.js"></script>
+<!-- script src="http://app.noyesno.net/poker-chip/tmp/jquery.mobile.custom.min.js"></script -->
+<script src="http://cdnjs.cloudflare.com/ajax/libs/json2/20121008/json2.min.js"></script>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/fastclick/0.6.0/fastclick.min.js"></script>
+<style>
+/*  */ 
+/*
+li.win {opacity:0.6; background-color:red}
+li.los {opacity:0.6; background-color:green}
+*/
+
+.in, .out {
+    -webkit-animation-duration: 100ms !important;
+}
+
+li.focused {opacity:0.6;background-color:blue}
+li.win span {color:red}
+li.los span {color:green}
+li.tie span {}
+
+#round-input-list span {font-size:100%}
+#player-list span      {font-size:16px}
+
+
+body {
+        -webkit-user-select: none;
+}
+
+code {color:blue;font-weight:bold}
+
+
+
+/*
+th {padding:3px 0.5em;text-align:center}
+td {padding:3px 0.5em;text-align:right}
+#counters {margin-top:1em; margin-bottom:1em;}
+#counters th {text-align:right}
+
+thead, tfoot {background-color:#333333;color:#cccccc;}
+
+table {border-collapse:collapse;width:100%}
+tbody th {color:gray}
+*/
+
+#counters {
+  border-collapse:collapse;
+  width:100%;
+  margin-top:1em; margin-bottom:1em;
+  font-family:Courier;
+}
+#counters th {text-align:right}
+#counters thead, #counters tfoot {background-color:#333333;color:#cccccc;}
+#counters td {text-align:right}
+
+#balance {
+  text-align:right;
+  width:100%;
+  font-family:Courier;
+  font-size:1.2em;
+  border-collapse:collapse;
+}
+#balance tbody {border-top:2px solid black}
+#balance thead, #balance tfoot {background-color:#333333;color:#cccccc;}
+#balance td, #balance th {padding:3px;}
+
+textarea.ui-input-text {
+  font-family:monospace;
+	word-spacing:0.5em;
+	font-weight:900;
+	font-size:1.5em;
+}
+
+#round-input-txt {
+  font-family:monospace;
+  word-spacing:0.5em;
+  font-weight:900;
+  text-align:center;
+}
+
+/*
+.win        {color:red;}
+.loss, .los {color:green;}
+.tie {}
+.sum  {}
+*/
+
+
+.ui-listview .ui-li {
+  font-family:monospace;
+  word-spacing:0.5em;
+  font-weight:bold;
+}
+
+#kb {
+  background-color:#dddddd;
+  border-collapse:collapse;width:100%;
+  font-family:monospace;
+  font-size:24px; line-height:180%;font-weight:bold;
+  position:fixed;
+  left:0px; right:0px; bottom:0px;
+  cursor:pointer;
+  display:none;
+  z-index:100;
+  text-shadow:none;
+  font-weight:normal;
+}
+#kb thead, #kb tfoot {background-color:inherit;color:black}
+#kb th, #kb td {padding:0;color:black;border:1px solid gray}
+.btn_win {background-color:red;}
+.btn_los {background-color:green;}
+.btn_tie {background-color:blue;}
+
+
+#console {text-align:center;color:silver;}
+/*  */ 
+</style>
+  </head>
+<body>
+
+<section data-role="page" id="home">
+  <header data-role="header" data-position="fixed" data-tap-toggle="false">
+    <h1>Chip Counter</h1>
+  </header>
+
+  <article data-role="content">
+  <ul data-role="listview" data-inset="true">
+	<li><a href="#game" id="btn_new_game" data-transition="flip">新开牌局</a></li>
+	<li><a href="#game" id="btn_resume_game" data-transition="flip">继续牌局</a></li>
+  </ul>
+
+  <ul data-role="listview" data-inset="true">
+	<li data-icon="info"><a href="#about">关于</a></li>
+	<li data-icon="info"><a href="#publicize">广而告之</a></li>
+  </ul>
+
+  <ul data-role="listview" data-inset="true">
+	<li data-icon="search"><a href="#poker">扑克</a></li>
+  </ul>
+  </article>
+</section>
+
+<section data-role="page" id="game">
+  <header data-role="header" data-position="fixed" data-tap-toggle="false">
+    <h1>牌局</h1>
+    <a href="#home" data-icon="home" data-iconpos="notext" data-transition="flip" class="ui-icon-nodisc" data-iconshadow="false">Home</a>
+    <a href="#round" data-icon="plus" data-transition="flip">记分</a>
+  </header>
+
+<article data-role="content">
+  <ul data-role="listview" data-inset="true" id="player-list" data-theme="b">
+	<li><label>User 1</label> <span class="ui-li-count">0</span></li>
+	<li><label>User 2</label> <span class="ui-li-count">0</span></li>
+	<li><label>User 3</label> <span class="ui-li-count">0</span></li>
+	<li><label>User 4</label> <span class="ui-li-count">0</span></li>
+  </ul>
+
+  <ul data-role="listview" data-inset="true" data-mini="true">
+	<li><a href="#round-history" data-transition="flip">回合历史</a> <span class="ui-li-count" id="round-total">0</span></li>
+	<li><a href="#round?-1" data-transition="flip">上一回合</a></li>
+  </ul>
+
+  <ul data-role="listview" data-inset="true" data-mini="true">
+	<li data-icon="plus"><a href="#" id="btn_add_player">添加玩家</a></li>
+	<li data-icon="refresh"><a id="btn_game_reset" href="#">重新开始</a></li>
+  </ul>
+</article>
+</section>
+
+<section data-role="page" id="round">
+  <header data-role="header" data-position="fixed" data-tap-toggle="false">
+		<h1>记分</h1>
+		<a href="#game" data-icon="back" data-iconpos="notext" data-transition="flip" data-rel="back">Back</a>
+		<a href="#game" data-icon="check" data-transition="flip" id="btn_save_round">保存</a>
+  </header>
+
+  <article data-role="content" style="padding-bottom:200px">
+    <ul data-role="listview" id="round-input-list" data-inset="true" data-theme="a">
+  	<li><label>User 1</label> <span class="ui-li-count">0</span></li>
+  	<li><label>User 2</label> <span class="ui-li-count">0</span></li>
+  	<li><label>User 3</label> <span class="ui-li-count">0</span></li>
+  	<li><label>User 4</label> <span class="ui-li-count">0</span></li>
+    </ul>
+
+    <p style="text-align:center">
+      <a href="#game" id="btn_round_delete">删除本回合记录</a>
+    </p>
+
+  <table id="kb" data-enhance="false">
+    <tr>
+  	<th colspan="1" class="btn_win" title="+" style="width:1.8em">赢</th>
+      <th>1</th><th>3</th><th>5</th><th>7</th><th>9</th><th rowspan="2" title="C" style="width:1.8em">平</th>
+    </tr>
+    <tr>
+  	<th colspan="1" class="btn_los" title="-" style="width:1.8em;">输</th>
+      <th>2</th><th>4</th><th>6</th><th>8</th><th>0</th>
+    </tr>
+    <!--tr>
+  	<th colspan="1" class="btn_tie" title="=">平</th>
+      <th>&lt;</th><th>&gt;</th><th>C</th><th></th><th></th>
+    </tr-->
+  </table>
+  </article>
+
+</section>
+
+
+<section data-role="page" id="round-history">
+  <header data-role="header" data-position="fixed" data-tap-toggle="false">
+    <h1>回合历史</h1>
+    <a href="#game" data-icon="back" data-iconpos="notext" data-transition="flip">Back</a>
+    <a href="#round" data-icon="plus" data-transition="flip">记分</a>
+  </header>
+  <article data-role="content">
+    <ul data-role="listview" id="round-history-list" data-inset="true">
+    </ul>
+  </article>
+</section>
+
+
+<!-- div data-role="controlgroup" data-type="horizontal" data-mini="true">
+    <a href="#" data-role="button" data-icon="plus" data-theme="b">Add</a>
+    <a href="#" data-role="button" data-icon="delete" data-theme="b">Delete</a>
+    <a href="#" data-role="button" data-icon="grid" data-theme="b">More</a>
+</div -->
+
+
+
+<section data-role="page" id="about">
+        <header data-role="header" data-position="fixed" data-tap-toggle="false">
+		<h1>关于</h1>
+		<a href="#home" data-icon="home" data-iconpos="notext" data-transition="flip">Home</a>
+		<a href="#game" data-icon="grid" data-iconpos="notext" data-transition="flip">Game</a>
+	</header>
+
+	<article data-role="content">
+            <p style="text-align:center">
+               Chip Counter<br/>
+               <img width="114" height="114" src="http://app.noyesno.net/poker-chip/touch-icon.114x114.png"/>
+               <br/>
+               Version 0.189
+            </p>
+            <p id="console"></p>
+            <button onclick="window.applicationCache.update()" data-mini="true">检查更新</button>
+
+            <p>计分时先选择玩家，再点击'赢'或'输'或'平'，然后点击具体分数。</p>
+            <p>计分时可以只记录赢家或输家的分数，其余玩家则只需要标记赢或输，分数会自动进行计算平分。</p>
+            <p>新开牌局最多8个玩家。</p>
+	</article>
+</section>
+
+<section data-role="page" id="poker">
+  <header data-role="header" data-position="fixed" data-tap-toggle="false">
+    <h1>扑克</h1>
+    <a href="#home" data-icon="home" data-iconpos="notext" data-transition="flip">Home</a>
+    <a href="#about" data-icon="info" data-iconpos="notext"  data-transition="flip">About</a>
+  </header>
+
+  <article data-role="content">
+  <ul data-role="listview" data-inset="true">
+	<li><a href="#poker-gandengyan">干瞪眼</a></li>
+	<li>斗地主</li>
+	<li>80分</li>
+	<li>十点半</li>
+	<li><a href="#poker-chuiniu">吹牛</a></li>
+  </ul>
+
+  <ul data-role="listview" data-inset="true">
+        <li data-role="list-divider">54张牌</li>
+        <li>大王代表太阳，小王代表月亮，其余52张代表一年中的52个星期</li>
+        <li>红黑两种颜色象征白天和黑夜</li>
+        <li>红桃、方块、梅花、黑桃象征春、夏、秋、东四个季节</li>
+        <li>每个花色13张牌，表示每个季节有13个星期</li>
+        <li>把J、Q、K当作11、12、13点，大小王为半点，一幅扑克总点数365点。</li>
+        <li>J、Q、K共12张，表示一年中的12个月</li>
+        <li data-role="list-divider">四种花色</li>
+	<li>红桃: Heart 红心、牧师、智慧、爱情 </li>
+	<li>方块: Diamond  砖瓦、工匠、财富</li>
+	<li>黑桃: Spade 长矛、军人、橄榄叶、和平</li>
+	<li>梅花: Club 三叶花、农业、幸运</li>
+        <li data-role="list-divider">牌面</li>
+	<li>大小王: Joker 小丑</li>
+	<li>J: Jack</li>
+	<li>Q: Queen 皇后: 朱迪思、莱克尔</li>
+	<li>K: King 国王: 大卫、查理、凯撒、亚历山大</li>
+	<li>A: Ace</li>
+  </ul>
+  </article>
+</section>
+
+<section data-role="page" id="poker-gandengyan">
+  <header data-role="header" data-position="fixed" data-tap-toggle="false">
+    <h1>干瞪眼</h1>
+    <a href="#game" data-icon="back" data-iconpos="notext" data-transition="flip" data-rel="back">Back</a>
+  </header>
+
+  <article data-role="content">
+    <p>由庄家开始，依次摸牌，每人五张，庄家多摸一张。</p>
+    <p>由庄家开始，依次出牌，出牌必须刚好大于上家，否则跳过不出。</p>
+    <p>若没人接手，则最后出牌者从底牌中摸一张新牌后，继续出牌。</p>
+    <p>先出完者为赢家，其余为输家。输家根据手中剩余牌数计分。</p>
+    <p>所谓刚好大于，比如6后面只能跟7；5,6,7后面只能跟6,7,8。</p>
+    <p>单牌顺序为3,4,...,,K,A。</p>
+    <p>2可以接在任何单牌后面。</p>
+    <p>大小王是百搭，但不可用于接单牌。</p>
+  </article>
+</section>
+
+<section data-role="page" id="poker-chuiniu">
+  <header data-role="header" data-position="fixed" data-tap-toggle="false">
+    <h1>吹牛</h1>
+    <a href="#game" data-icon="back" data-iconpos="notext" data-transition="flip" data-rel="back">Back</a>
+  </header>
+
+  <article data-role="content">
+    <p>52张牌全发</p>
+    <p>第一位玩家开始出牌，一至四张，背面朝上，并声称所出牌的大小，比如三张A、一张K等。</p>
+    <p>所谓“声称”，即可以“吹牛”</p>
+    <p>下家的选择：继续“吹牛”管上，或者不要，或者揭谎。</p>
+    <p>所谓管上，以对7为例，可以三张7管2张7，也可以一对9管一对7。</p>
+    <p>若揭谎正确，本轮牌全给出牌者；若错误，则全给揭谎者；赢的人继续出牌。</p>
+    <p>一轮结束如果没结果，本轮牌成为废牌。</p>
+    <p>所谓一轮，行无可行处止。</p>
+    <p>牌先出完者为赢家。</p>
+  </article>
+</section>
+<script>
+/*  */ 
+
+window.onerror = function(message,url,line){
+  alert([message,url,line].join("\n"));
+};
+
+window.addEventListener('load', function() {
+    new FastClick(document.body);
+}, false);
+
+$(document).on('syncsave',function(evt){
+  var key = [app.id, 'appdata'].join('/');
+  var data = JSON.stringify(appdata);
+  localStorage.setItem(key, data);
+});
+
+$(document).on('syncload',function(evt){
+  var key = [app.id, 'appdata'].join('/');
+  var data = localStorage.getItem(key);
+  var appdata_old = appdata;
+  if(data) appdata = JSON.parse(data);
+  // TOOD: test fail
+});
+
+
+$(document).trigger('syncload');
+
+$(function(){
+
+  $console = $('#console');
+
+  var _updateready = false;
+  var updateready = function(event){
+    if(_updateready) return; _updateready = true;
+
+    if(confirm("本地缓存已更新，刷新页面获取最新版本？")){
+      // window.applicationCache.swapCache(); // optional
+      window.location.reload();
+    }
+  };
+
+  $(window).bind('online offline', function(evt){
+    var status = navigator.onLine? "Online":"Offline";
+    $console.text(status);
+  });
+
+  $(window).bind({
+    'online': function(evt){
+      //
+    },
+    'offline': function(evt){
+      //
+    }
+  });
+
+  $(window.applicationCache).bind({
+    'updateready': updateready,
+    'checking': function(){
+      $console.text("Checking update ...");
+    },
+    'noupdate': function(){
+      $console.text("Latest Version!");
+    },
+    'downloading': function(){
+      counter.downloading = 0;
+      $console.text('Start downloading ...');
+    },
+    'progress': function(){
+      $console.text('Downloading file #'+ (++counter.downloading) + ' ...');
+    }
+  });
+
+  if(applicationCache.status==applicationCache.UPDATEREADY) updateready();
+  if(applicationCache.status==applicationCache.UNCACHED){
+    //  TODO
+  }
+
+});
+
+$(document).on('pageinit', '#home', function(evt){
+  $('#btn_new_game, #btn_resume_game').click(function(){
+    if(this.id == 'btn_resume_game'){
+      if(appdata.player.length > 0) return true;
+      if(!confirm('牌局不存在！新开牌局！')) return false;
+    }else{
+      if(appdata.player.length>0 && !confirm('新开牌局将清空玩家数据和回合数据！')) return false;
+    }
+    var n_player = 0;
+    for(var i=0;i<3;i++){
+      var v = window.prompt('玩家人数');
+      if(v==null) return false;
+      v = parseInt(v);
+      if(isNaN(v) || v<1 || v>8){
+        alert('您输入的玩家人数不正确！');
+        continue;
+      }
+      n_player = v;
+      break;
+    }
+
+    if(n_player==0){
+      return false;
+    }
+
+    appdata.player = [];
+    appdata.rounds = [];
+    for(var i=1;i<=n_player;i++) appdata.player.push('玩家'+i);
+    $(document).trigger('syncsave');
+    player_list_update();
+    return true;
+  });
+
+  $('#game').page();
+});
+
+$(document).on('pageinit', '#game', function(evt){
+  console.log('pageinit #game');
+
+  $('#player-list').on('tap','label', function(evt){
+	var name = window.prompt("玩家:", $(this).text());
+    if(name==null) return false;
+
+    if(name!=""){
+      $(this).text(name);
+      $(document).trigger('syncsave');
+    }else{
+      //TODO: appdata.palyer.slice
+    }
+    return false;
+  });
+
+  $('#btn_game_reset').click(function(evt){
+    if(!window.confirm('重新开始将清空回合数据！')){
+      return false;
+    }
+    appdata.rounds = [];
+    player_list_update();
+    $(document).trigger('syncsave');
+    return false;
+  });
+
+  $('#btn_add_player').click(function(evt){
+    var name = window.prompt('添加新玩家');
+    if(name!=null && name!=""){
+      console.log('add player ...');
+      appdata.player.push(name);
+      player_list_update();
+      $(document).trigger('syncsave');
+    }
+    return false;
+  });
+
+  player_list_update();
+
+  return false;
+});
+
+function line2record(cols){
+  var sum  = 0;
+
+  var record = [];
+  var wins = [], lose = [];;
+
+  for(var j=0, n=cols.length; j<n; j++){
+    var v = cols[j];
+    var score = parseInt(v);
+    if(!isNaN(score)){
+       record[j] = score;
+       sum += score;
+    }else if(v=='+'){
+       wins.push(j);
+    }else if(v=='-'){
+      lose.push(j);
+    }
+  }
+
+  if(wins.length > 0 && lose.length>0){
+    window.confirm('数据似乎有误，不能自动计算输赢分数！')
+    return null;
+  }else if(wins.length>0 || lose.length>0){
+    var list = wins.length>0?wins:lose;
+    if(sum%list.length != 0){
+      window.confirm('数据似乎有误，自动计算的输赢结果不能取整！')
+      return null;
+    }
+    var due  = list.length>0?(-sum/list.length):0;
+    for(var k=0; k<list.length; k++){
+      var pos = list[k];
+      record[pos] = due;
+    }
+    return record;
+  }else if(sum!=0){
+    window.confirm('数据似乎有误，输赢总和不为零！')
+    return null;
+  }
+  // TODO: not integer
+  return record;
+}
+
+$(document).on('pageinit', '#round', function(evt){
+  console.log('pageinit');
+
+  $('#kb').show();
+
+  $('#btn_round_delete').click(function(){
+    if(!confirm("确定删除本回合记录？")){
+      return false;
+    }
+    var idx = $('#round-input-list').data('idx');
+    if(idx>0){
+      appdata.rounds.splice(idx-1,1);
+      $(document).trigger('syncsave');
+      player_list_update();
+    }
+    return true;
+  });
+
+  $('#btn_save_round').click(function(){
+    var record = $('#round-input-list li').map(function(){
+      return $('span', this).text();
+    }).get();
+
+    record = line2record(record);
+    if(record==null) return false;
+
+    var idx = $('#round-input-list').data('idx');
+    if(idx>0){
+      appdata.rounds[idx-1] = record;
+    }else{
+      appdata.rounds.push(record);
+    }
+    $(document).trigger('syncsave');
+    player_list_update();
+    return true;
+  });
+
+  $('#round-input-list').on('tap','li', function(evt){
+	$('#round-input-list li').removeClass('focused');
+	$(this).addClass('focused');
+    return false;
+  });
+
+  $('#kb th').bind('tap', function(evt){
+    var c = this.title.length?this.title:this.innerText;
+	var t = $('#counter-input').get(0);
+	var r = $('#round-input-txt').get(0);
+
+	var jusers = $('#round-input-list');
+	var n = jusers.length;
+    var focused = $('.focused', jusers);
+	if(focused.length==0) {
+	  focused = $('li:first', jusers);
+	  focused.addClass('focused');
+	}
+
+	var score = $('span', focused);
+
+	if(c=='>' || c=='<'){
+	  focused.removeClass('focused');
+	  if(c=='>'){
+		focused = focused.next();
+		if(focused.length==0) focused = $('li:first', jusers);
+	  }
+	  if(c=='<') {
+		focused = focused.prev();
+		if(focused.length==0) focused = $('li:last', jusers);
+	  }
+	  focused.addClass('focused');
+	}else if(c=='+' || c=='-'){
+	  score.text(c);
+	  /* score.removeClass('win los tie').addClass(c=='+'?'win':'los'); */
+	  focused.removeClass('win los tie').addClass(c=='+'?'win':'los'); //TODO
+	}else if(c=='='){
+		score.text('0');
+	}else if(c>='0'&&c<='9'){
+          if(score.text()=='0') score.text('+');
+	  score.text(score.text()+c);
+	}else if(c=='C'){
+		score.text('0');
+	}
+        return false;
+  });
+  return false;
+});
+
+$(document).on('pagebeforechange', function(evt, data){
+  console.log('pagebeforechange');
+  if (typeof data.toPage === "string" ) {
+	var u = $.mobile.path.parseUrl(data.toPage);
+	var toks = u.hash.split(/\?/);
+	appenv.query = data.options.query = toks.length>1?toks[1]:null;
+  }
+});
+
+
+
+//-- $(document).on('pagechange', function(evt){
+//--   console.log('pagechange');
+//-- });
+//-- 
+//-- 
+//-- $(document).on('pagebeforeshow',function(evt, ui){
+//--   console.log('pagebeforeshow');
+//-- });
+//-- 
+//-- $(document).on('pageshow',function(evt, ui){
+//--   console.log('pageshow');
+//-- });
+
+$(document).on('pagebeforeshow', '#game', function(evt, data){
+  console.log('pagebeforeshow #game');
+  //player_list_update();
+  //$('#player-list').listview('refresh');
+  return false;
+});
+
+$(document).on('pagebeforeshow','#round', function(evt, ui){
+  $('#kb').show();
+  var $player_list = $('#round-input-list');
+
+  var idx = parseInt(appenv.query); 
+  var round = [];
+  if(!isNaN(idx)){
+    if(idx<0) idx = appdata.rounds.length+idx+1;
+    if(idx >= 1 && idx<=appdata.rounds.length){
+      round = appdata.rounds[idx-1];
+      $('h1',this).text('修改记分 # '+idx);
+    }
+    $player_list.data('idx', idx);
+    $('#btn_round_delete').show();
+  }else{
+    $('h1',this).text('新回合记分');
+    $player_list.data('idx', null);
+    $('#btn_round_delete').hide();
+  }
+
+  console.log('pagebeforeshow #round '+idx + ' ' + round.join(','));
+
+  var $players = $player_list.find('li');
+  for(var i=0, n=appdata.player.length; i<n; i++){
+    var name = appdata.player[i];
+    var score = (round!=null && i<round.length)?round[i]:0;
+    var cname = score>0?'win':(score<0?'los':'tie');
+    if(i<$players.length){
+      $players.eq(i).find('span').text(score.format('+')).end().find('label').text(name).end()
+         .removeClass('win los tie').addClass(cname);
+    }else{
+      $player_list.append('<li class="'+cname+'">'+name+'<span class="ui-li-count">'+score.format('+')+'</span></li>');
+    }
+  }
+  if(appdata.player.length > $players.length){
+    $player_list.listview('refresh');
+  }else if(appdata.player.length < $players.length){
+    $players.slice(appdata.player.length).remove();
+  }
+  return false;
+});
+
+Number.prototype.format = function(fmt) { 
+  if(fmt==null) fmt=''; // undefined == null in expr
+  var use_sign = fmt.indexOf('+')>-1;
+  var s = this.toString();
+  var v = this.valueOf();
+  if(use_sign && v>0) s = '+'+s;
+  return s;
+}
+
+
+
+
+$(document).on('pagebeforeshow','#round-history', function(evt, data){
+  var buffer = [];
+  for(var i=appdata.rounds.length-1, n=1; i>=0; i--, n++){
+    var r = appdata.rounds[i];
+    var idx = i+1;
+    if(n>0){ // TODO:
+      buffer.push('<li><a href="#round?'+idx+'">#'+ idx + ' : ' + r.join(',')+'</a></li>');
+      continue;
+    }
+    buffer.push('<li data-role="list-divider">#'+ idx + ' : ' + r.join(',')+'</li>');
+    for(var j=0, jn=r.length; j<jn; j++){
+      buffer.push('<li>'+ appdata.player[j] + '<span class="ui-li-count">'+r[j]+'</span></li>');
+    }
+  }
+  if(appdata.rounds.length==0){
+    buffer.push('<li data-role="list-divider">暂无回合数据</li>');
+  }
+  $('#round-history-list').empty().html(buffer.join("\n")).listview('refresh');
+  return false;
+});
+
+
+function player_list_update(){
+
+  for(var i=0, n=appdata.player.length; i<n; i++){
+    appcache.balance[i] = 0;
+  }
+
+  for(var i=0, ni=appdata.rounds.length; i<ni; i++){
+    var r = appdata.rounds[i];
+    for(var j=0, nj=appdata.player.length; j<nj; j++){
+	  appcache.balance[j] += (j<r.length?r[j]:0);
+    }
+  }
+
+  var buf = [];
+  for(var i=0, n=appdata.player.length; i<n; i++){
+    var name = appdata.player[i];
+    var score = appcache.balance[i];
+    var cname = score>0?'win':(score<0?'los':'tie');
+    buf.push('<li class="'+cname+'"><label>'+name+'</label><span class="ui-li-count">'+score.format('+')+'</span></li>');
+  }
+  $('#player-list').empty().html(buf.join('\n')).listview('refresh');
+  $('#round-total').text(appdata.rounds.length);
+}
+
+/*  */ 
+</script>
+
+  </body>
+</html>
