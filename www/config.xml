@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+    <widget xmlns = "http://www.w3.org/ns/widgets"
+            xmlns:gap = "http://phonegap.com/ns/1.0"
+            id        = "net.noyesno.chip-counter"
+            versionCode="1" 
+            version   = "0.0.1">
+
+    <!-- versionCode is optional and Android only -->
+
+    <name>Chip Counter</name>
+
+    <description>
+            An useful chip counter for poker games, etc. 
+    </description>
+
+    <author href="http://noyesno.net/" email="support@noyesno.net">
+          noyesno 
+    </author>
+
+    <preference name="orientation" value="portrait" />
+    <preference name="fullscreen" value="false" />
+    <preference name="permissions" value="none"/>
+
+    <preference name="webviewbounce" value="false" />
+
+    <icon src="icon.png" />
+
+    <access origin="*" />
+</widget>
